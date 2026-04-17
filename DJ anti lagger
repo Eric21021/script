@@ -1,0 +1,289 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+local function getMobileOptimized(pcValue, mobileValue)
+    return isMobile and mobileValue or pcValue
+end
+
+local IR_BG = Color3.fromRGB(0, 20, 0)
+local IR_CARD = Color3.fromRGB(10, 30, 10)
+local IR_GREEN = Color3.fromRGB(0, 200, 0)
+local IR_WHITE = Color3.fromRGB(255, 255, 255)
+local IR_RED = Color3.fromRGB(220, 60, 85)
+local IR_SW_OFF = Color3.fromRGB(30, 40, 30)
+
+local antiLagActive = false
+local removeAccessoriesActive = false
+local descendantConnection = nil
+local accessoryConnection = nil
+
+local function processDescendant(obj)
+    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Fire") then
+        obj.Enabled = false
+    end
+    if obj:IsA("Decal") or obj:IsA("Texture") then
+        obj.Transparency = 1
+    end
+    if obj:IsA("BasePart") then
+        obj.Material = Enum.Material.Plastic
+        obj.Reflectance = 0
+        obj.CastShadow = false
+    end
+    if removeAccessoriesActive and (obj:IsA("Accessory") or obj:IsA("Hat")) then
+        obj:Destroy()
+    end
+end
+
+local function optimizeLighting()
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9000000488
+    Lighting.Brightness = 1
+    Lighting.EnvironmentDiffuseScale = 0
+    Lighting.EnvironmentSpecularScale = 0
+    for _, effect in pairs(Lighting:GetChildren()) do
+        if effect:IsA("BlurEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") or effect:IsA("BloomEffect") or effect:IsA("DepthOfFieldEffect") then
+            effect.Enabled = false
+        end
+    end
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        processDescendant(obj)
+    end
+end
+
+local function enableAntiLag()
+    if antiLagActive then return end
+    antiLagActive = true
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    optimizeLighting()
+    descendantConnection = Workspace.DescendantAdded:Connect(processDescendant)
+end
+
+local function disableAntiLag()
+    antiLagActive = false
+    if descendantConnection then
+        descendantConnection:Disconnect()
+        descendantConnection = nil
+    end
+end
+
+local function removeAllAccessories()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player.Character then
+            for _, obj in ipairs(player.Character:GetDescendants()) do
+                if obj:IsA("Accessory") or obj:IsA("Hat") then
+                    obj:Destroy()
+                end
+            end
+        end
+    end
+end
+
+local function enableRemoveAccessories()
+    removeAccessoriesActive = true
+    removeAllAccessories()
+    if not accessoryConnection then
+        accessoryConnection = Players.PlayerAdded:Connect(function(player)
+            player.CharacterAdded:Connect(function(char)
+                task.wait(0.5)
+                if removeAccessoriesActive then
+                    for _, obj in ipairs(char:GetDescendants()) do
+                        if obj:IsA("Accessory") or obj:IsA("Hat") then
+                            obj:Destroy()
+                        end
+                    end
+                end
+            end)
+        end)
+    end
+    if descendantConnection then descendantConnection:Disconnect() end
+    descendantConnection = Workspace.DescendantAdded:Connect(processDescendant)
+end
+
+local function disableRemoveAccessories()
+    removeAccessoriesActive = false
+    if accessoryConnection then
+        accessoryConnection:Disconnect()
+        accessoryConnection = nil
+    end
+end
+
+pcall(function() game.CoreGui:FindFirstChild("DJAntiLagGUI"):Destroy() end)
+
+local alGui = Instance.new("ScreenGui")
+alGui.Name = "DJAntiLagGUI"
+alGui.ResetOnSpawn = false
+alGui.DisplayOrder = 11
+alGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local alMain = Instance.new("Frame")
+alMain.Size = getMobileOptimized(UDim2.new(0, 240, 0, 145), UDim2.new(0, 210, 0, 125))
+alMain.Position = getMobileOptimized(UDim2.new(0.02, 0, 0.3, 0), UDim2.new(0.02, 0, 0.35, 0))
+alMain.BackgroundColor3 = IR_BG
+alMain.BorderSizePixel = 0
+alMain.Active = true
+alMain.ClipsDescendants = true
+alMain.Parent = alGui
+Instance.new("UICorner", alMain).CornerRadius = UDim.new(0, 12)
+
+local alStroke = Instance.new("UIStroke", alMain)
+alStroke.Color = IR_GREEN
+alStroke.Thickness = 1.5
+
+do
+    local drag, ds, sp = false
+    alMain.InputBegan:Connect(function(inp)
+        if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+            drag = true
+            ds = inp.Position
+            sp = alMain.Position
+            inp.Changed:Connect(function()
+                if inp.UserInputState == Enum.UserInputState.End then drag = false end
+            end)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(inp)
+        if drag and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then
+            local d = inp.Position - ds
+            alMain.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y)
+        end
+    end)
+end
+
+local alTitle = Instance.new("TextLabel", alMain)
+alTitle.Size = UDim2.new(1, -60, 0, 25)
+alTitle.Position = UDim2.new(0, 10, 0, 5)
+alTitle.BackgroundTransparency = 1
+alTitle.Text = "DJ ANTI LAG"
+alTitle.TextColor3 = IR_GREEN
+alTitle.Font = Enum.Font.GothamBlack
+alTitle.TextSize = getMobileOptimized(14, 12)
+alTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local alSub = Instance.new("TextLabel", alMain)
+alSub.Size = UDim2.new(1, -60, 0, 15)
+alSub.Position = UDim2.new(0, 10, 0, 28)
+alSub.BackgroundTransparency = 1
+alSub.Text = "discord.gg/DJ is tuff"
+alSub.TextColor3 = IR_WHITE
+alSub.Font = Enum.Font.Gotham
+alSub.TextSize = getMobileOptimized(9, 8)
+alSub.TextXAlignment = Enum.TextXAlignment.Left
+
+local alClose = Instance.new("TextButton", alMain)
+alClose.Size = UDim2.new(0, 30, 0, 30)
+alClose.Position = UDim2.new(1, -35, 0, 2)
+alClose.BackgroundColor3 = IR_RED
+alClose.BorderSizePixel = 0
+alClose.Text = "×"
+alClose.TextColor3 = IR_WHITE
+alClose.Font = Enum.Font.GothamBold
+alClose.TextSize = 20
+alClose.ZIndex = 5
+Instance.new("UICorner", alClose).CornerRadius = UDim.new(0, 8)
+
+local function createToggle(yPos, labelText, callback)
+    local container = Instance.new("Frame", alMain)
+    container.Size = UDim2.new(1, -20, 0, 32)
+    container.Position = UDim2.new(0, 10, 0, yPos)
+    container.BackgroundColor3 = IR_CARD
+    container.BorderSizePixel = 0
+    container.ZIndex = 3
+    Instance.new("UICorner", container).CornerRadius = UDim.new(0, 6)
+
+    local stroke = Instance.new("UIStroke", container)
+    stroke.Color = IR_GREEN
+    stroke.Thickness = 1
+    stroke.Transparency = 0.8
+
+    local label = Instance.new("TextLabel", container)
+    label.Size = UDim2.new(1, -70, 1, 0)
+    label.Position = UDim2.new(0, 8, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = labelText
+    label.TextColor3 = IR_WHITE
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = getMobileOptimized(12, 10)
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.ZIndex = 4
+
+    local switchBg = Instance.new("Frame", container)
+    switchBg.Size = UDim2.new(0, 40, 0, 20)
+    switchBg.Position = UDim2.new(1, -48, 0.5, -10)
+    switchBg.BackgroundColor3 = IR_SW_OFF
+    switchBg.BorderSizePixel = 0
+    switchBg.ZIndex = 4
+    Instance.new("UICorner", switchBg).CornerRadius = UDim.new(1, 0)
+
+    local switchCircle = Instance.new("Frame", switchBg)
+    switchCircle.Size = UDim2.new(0, 16, 0, 16)
+    switchCircle.Position = UDim2.new(0, 2, 0.5, -8)
+    switchCircle.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    switchCircle.BorderSizePixel = 0
+    switchCircle.ZIndex = 5
+    Instance.new("UICorner", switchCircle).CornerRadius = UDim.new(1, 0)
+
+    local isOn = false
+    local btn = Instance.new("TextButton", container)
+    btn.Size = UDim2.new(1, 0, 1, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    btn.ZIndex = 6
+
+    btn.MouseButton1Click:Connect(function()
+        isOn = not isOn
+        TweenService:Create(switchBg, TweenInfo.new(0.2, Enum.EasingStyle.Quint), {BackgroundColor3 = isOn and IR_GREEN or IR_SW_OFF}):Play()
+        TweenService:Create(switchCircle, TweenInfo.new(0.2, Enum.EasingStyle.Back), {Position = isOn and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)}):Play()
+        if callback then callback(isOn) end
+    end)
+
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(stroke, TweenInfo.new(0.15), {Transparency = 0.3}):Play()
+        TweenService:Create(container, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(20, 40, 20)}):Play()
+    end)
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(stroke, TweenInfo.new(0.15), {Transparency = 0.8}):Play()
+        TweenService:Create(container, TweenInfo.new(0.15), {BackgroundColor3 = IR_CARD}):Play()
+    end)
+end
+
+createToggle(50, "Anti Lag", function(on)
+    if on then enableAntiLag() else disableAntiLag() end
+end)
+createToggle(87, "Remove Accessories", function(on)
+    if on then enableRemoveAccessories() else disableRemoveAccessories() end
+end)
+
+local alReopenBtn = Instance.new("TextButton", alGui)
+alReopenBtn.Size = UDim2.new(0, 40, 0, 40)
+alReopenBtn.Position = getMobileOptimized(UDim2.new(0.02, 0, 0.3, 0), UDim2.new(0.02, 0, 0.35, 0))
+alReopenBtn.BackgroundColor3 = IR_GREEN
+alReopenBtn.BorderSizePixel = 0
+alReopenBtn.Text = "IR"
+alReopenBtn.TextColor3 = IR_WHITE
+alReopenBtn.Font = Enum.Font.GothamBlack
+alReopenBtn.TextSize = 14
+alReopenBtn.Visible = false
+alReopenBtn.ZIndex = 20
+Instance.new("UICorner", alReopenBtn).CornerRadius = UDim.new(0, 10)
+
+alClose.MouseButton1Click:Connect(function()
+    alMain.Visible = false
+    alReopenBtn.Visible = true
+end)
+alReopenBtn.MouseButton1Click:Connect(function()
+    alMain.Visible = true
+    alReopenBtn.Visible = false
+end)
+
+alClose.MouseEnter:Connect(function()
+    TweenService:Create(alClose, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 80, 100)}):Play()
+end)
+alClose.MouseLeave:Connect(function()
+    TweenService:Create(alClose, TweenInfo.new(0.15), {BackgroundColor3 = IR_RED}):Play()
+end)
