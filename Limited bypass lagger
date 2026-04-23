@@ -1,0 +1,233 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local pGui = player:WaitForChild("PlayerGui")
+
+-- Logic Variables
+local isLagOn = false
+local isSpeedOn = false
+local lagAmount = 0.3
+local speedAmount = 42
+
+-- ==================== MAIN GUI  ====================
+local mainGui = Instance.new("ScreenGui")
+mainGui.Name = "LimitedHub_Final"
+mainGui.ResetOnSpawn = false
+pcall(function() mainGui.Parent = (gethui and gethui()) or pGui end)
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 240, 0, 340)
+mainFrame.Position = UDim2.new(0.5, -120, 0.5, -170)
+mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Parent = mainGui
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 15)
+
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, 0, 1, 0)
+content.BackgroundTransparency = 1
+content.Parent = mainFrame
+
+-- ==================== TOP BAR  ====================
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 45)
+topBar.BackgroundTransparency = 1
+topBar.Parent = mainFrame
+
+local title = Instance.new("TextLabel")
+title.Text = "LIMITED HUB"
+title.Font = Enum.Font.LuckiestGuy
+title.TextColor3 = Color3.fromRGB(255, 215, 0)
+title.TextSize = 20
+title.Size = UDim2.new(0, 120, 1, 0)
+title.Position = UDim2.new(0, 15, 0, 0)
+title.BackgroundTransparency = 1
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = topBar
+
+local underline = Instance.new("Frame")
+underline.Size = UDim2.new(0, 80, 0, 2)
+underline.Position = UDim2.new(0, 15, 0.7, 0)
+underline.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
+underline.BorderSizePixel = 0
+underline.Parent = topBar
+
+local statusDot = Instance.new("Frame")
+statusDot.Size = UDim2.new(0, 12, 0, 12)
+statusDot.Position = UDim2.new(1, -75, 0, 16)
+statusDot.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+statusDot.Parent = topBar
+Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
+
+local minBtn = Instance.new("TextButton")
+minBtn.Size = UDim2.new(0, 30, 0, 30)
+minBtn.Position = UDim2.new(1, -40, 0, 8)
+minBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+minBtn.Text = "▲"
+minBtn.TextColor3 = Color3.fromRGB(255, 215, 0)
+minBtn.Font = Enum.Font.GothamBold
+minBtn.Parent = topBar
+Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 6)
+
+-- ==================== POWER TOGGLE ====================
+local pwrLabel = Instance.new("TextLabel")
+pwrLabel.Text = "POWER    <font color='#555555'>[F]</font>"
+pwrLabel.RichText = true
+pwrLabel.Font = Enum.Font.GothamBold
+pwrLabel.TextColor3 = Color3.fromRGB(255, 180, 0)
+pwrLabel.TextSize = 13
+pwrLabel.Position = UDim2.new(0, 15, 0, 55)
+pwrLabel.Size = UDim2.new(0, 100, 0, 20)
+pwrLabel.BackgroundTransparency = 1
+pwrLabel.TextXAlignment = Enum.TextXAlignment.Left
+pwrLabel.Parent = content
+
+local tBg = Instance.new("Frame")
+tBg.Size = UDim2.new(0, 38, 0, 18)
+tBg.Position = UDim2.new(1, -53, 0, 56)
+tBg.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+tBg.Parent = content
+Instance.new("UICorner", tBg).CornerRadius = UDim.new(1, 0)
+
+local knob = Instance.new("Frame")
+knob.Size = UDim2.new(0, 14, 0, 14)
+knob.Position = UDim2.new(0, 2, 0.5, -7)
+knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+knob.Parent = tBg
+Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+
+local function toggle()
+    isSpeedOn = not isSpeedOn
+    isLagOn = isSpeedOn
+    knob:TweenPosition(isSpeedOn and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7), "Out", "Quad", 0.1)
+end
+
+local tBtn = Instance.new("TextButton", tBg)
+tBtn.Size, tBtn.BackgroundTransparency, tBtn.Text = UDim2.new(1,0,1,0), 1, ""
+tBtn.MouseButton1Click:Connect(toggle)
+UIS.InputBegan:Connect(function(i, g) if not g and i.KeyCode == Enum.KeyCode.F then toggle() end end)
+
+-- ==================== SLIDERS ====================
+local function createSlider(y, name, default, sType, startPerc)
+    local sLabel = Instance.new("TextLabel")
+    sLabel.Text = name:upper() .. "\n" .. default
+    sLabel.Font = Enum.Font.GothamBold
+    sLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sLabel.TextSize = 11
+    sLabel.Position = UDim2.new(0, 15, 0, y)
+    sLabel.Size = UDim2.new(0, 150, 0, 30)
+    sLabel.BackgroundTransparency, sLabel.TextXAlignment = 1, Enum.TextXAlignment.Left
+    sLabel.Parent = content
+
+    local pLabel = Instance.new("TextLabel")
+    pLabel.Text = startPerc .. "%"
+    pLabel.Font = Enum.Font.GothamBold
+    pLabel.TextColor3 = Color3.fromRGB(255, 180, 0)
+    pLabel.TextSize = 11
+    pLabel.Position = UDim2.new(1, -55, 0, y + 10)
+    pLabel.BackgroundTransparency = 1
+    pLabel.Parent = content
+
+    local bar = Instance.new("Frame")
+    bar.Size = UDim2.new(1, -30, 0, 4)
+    bar.Position = UDim2.new(0, 15, 0, y + 45)
+    bar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    bar.Parent = content
+    Instance.new("UICorner", bar)
+
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(startPerc/100, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(255, 180, 0)
+    fill.Parent = bar
+    Instance.new("UICorner", fill)
+
+    local sknob = Instance.new("TextButton")
+    sknob.Size = UDim2.new(0, 14, 0, 14)
+    sknob.Position = UDim2.new(startPerc/100, -7, 0.5, -7)
+    sknob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sknob.Text = ""
+    sknob.Parent = bar
+    Instance.new("UICorner", sknob).CornerRadius = UDim.new(1, 0)
+
+    local isDragging = false
+    sknob.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then isDragging = true end end)
+    UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then isDragging = false end end)
+
+    UIS.InputChanged:Connect(function(input)
+        if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local rel = math.clamp((input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+            sknob.Position = UDim2.new(rel, -7, 0.5, -7)
+            fill.Size = UDim2.new(rel, 0, 1, 0)
+            pLabel.Text = math.floor(rel * 100) .. "%"
+            if sType == "speed" then
+                speedAmount = math.floor(16 + rel * 84)
+                sLabel.Text = "SLIDERS\nSpeed (" .. speedAmount .. ")"
+            else
+                lagAmount = rel
+                sLabel.Text = "Intensity (" .. math.floor(rel * 100) .. "%)"
+            end
+        end
+    end)
+end
+
+createSlider(105, "Sliders", "Speed (42)", "speed", 30)
+createSlider(170, "", "Intensity (30%)", "lag", 50)
+
+-- ==================== FUNCTIONS & FOOTER ====================
+local funcLabel = Instance.new("TextLabel")
+funcLabel.Text = "FUNCTIONS"
+funcLabel.Font = Enum.Font.GothamBold
+funcLabel.TextColor3 = Color3.fromRGB(255, 180, 0)
+funcLabel.TextSize = 10
+funcLabel.Position = UDim2.new(0, 15, 0, 235)
+funcLabel.BackgroundTransparency, funcLabel.TextXAlignment = 1, Enum.TextXAlignment.Left
+funcLabel.Parent = content
+
+local act = Instance.new("TextButton")
+act.Size = UDim2.new(1, -30, 0, 45)
+act.Position = UDim2.new(0, 15, 0, 255)
+act.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+act.Text = "ACTIVATE"
+act.Font = Enum.Font.LuckiestGuy
+act.TextSize = 18
+act.Parent = content
+Instance.new("UICorner", act)
+
+local foot = Instance.new("TextLabel")
+foot.Text = "READY"
+foot.Font = Enum.Font.GothamBold
+foot.TextColor3 = Color3.fromRGB(120, 120, 120)
+foot.TextSize = 11
+foot.Position = UDim2.new(0, 15, 1, -25)
+foot.BackgroundTransparency, foot.TextXAlignment = 1, Enum.TextXAlignment.Left
+foot.Parent = content
+
+-- ==================== DRAGGING & MINIMIZE ====================
+local dragging, dragStart, startPos
+topBar.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true dragStart = i.Position startPos = mainFrame.Position end end)
+UIS.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local d = i.Position - dragStart mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset+d.X, startPos.Y.Scale, startPos.Y.Offset+d.Y) end end)
+UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+
+minBtn.MouseButton1Click:Connect(function()
+    content.Visible = not content.Visible
+    mainFrame:TweenSize(content.Visible and UDim2.new(0, 240, 0, 340) or UDim2.new(0, 240, 0, 45), "Out", "Quad", 0.15, true)
+    minBtn.Text = content.Visible and "▲" or "▼"
+end)
+
+-- ==================== CORE LOOP ====================
+RunService.RenderStepped:Connect(function()
+    if isSpeedOn and player.Character then
+        local r = player.Character:FindFirstChild("HumanoidRootPart")
+        local h = player.Character:FindFirstChildOfClass("Humanoid")
+        if r and h and h.MoveDirection.Magnitude > 0 then
+            r.AssemblyLinearVelocity = Vector3.new(h.MoveDirection.Unit.X * speedAmount, r.AssemblyLinearVelocity.Y, h.MoveDirection.Unit.Z * speedAmount)
+        end
+    end
+    if isLagOn and lagAmount > 0 then
+        local t = tick()
+        while tick() - t < (lagAmount * 0.05) do end
+    end
+end)
