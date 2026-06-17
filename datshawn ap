@@ -1,0 +1,312 @@
+--// DATSHAWN'S AP SPAM
+local Players = game:GetService("Players")
+
+while not Players.LocalPlayer do task.wait(0.1) end
+local LocalPlayer = Players.LocalPlayer
+
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+local playerGui = LocalPlayer:WaitForChild("PlayerGui", 15)
+if not playerGui then return end
+local adminPanel = playerGui:WaitForChild("AdminPanel", 15)
+if not adminPanel then return end
+
+--// SERVICES
+local TweenService     = game:GetService("TweenService")
+local HttpService      = game:GetService("HttpService")
+
+--// SETTINGS
+local SETTINGS_FILE = "DatShawnAPConfig.json"
+local SelectedCommands = {
+    Semi = {balloon=true, tiny=true,  rocket=true, inverse=true, ragdoll=false, jail=false, morph=false, jumpscare=false},
+    Full = {balloon=true, tiny=false, rocket=true, inverse=true, ragdoll=true,  jail=true,  morph=true,  jumpscare=true},
+}
+
+local function saveSettings()
+    if writefile then
+        pcall(function() writefile(SETTINGS_FILE, HttpService:JSONEncode(SelectedCommands)) end)
+    end
+end
+
+-- load saved settings
+if isfile and isfile(SETTINGS_FILE) then
+    local ok, decoded = pcall(HttpService.JSONDecode, HttpService, readfile(SETTINGS_FILE))
+    if ok and type(decoded) == "table" then
+        for k, v in pairs(decoded) do SelectedCommands[k] = v end
+    end
+end
+
+--// ADMIN CMD LOGIC
+local commandCache, profileCache = {}, {}
+local cmds = {"balloon","tiny","rocket","inverse","ragdoll","jail","morph","jumpscare"}
+
+local function cacheActivated(obj)
+    local cached = {}
+    local ok, conns = pcall(getconnections, obj.Activated)
+    if ok and type(conns) == "table" then
+        for _, c in ipairs(conns) do
+            if type(c.Function) == "function" then table.insert(cached, c.Function) end
+        end
+    end
+    return cached
+end
+
+local function fireActivated(cached)
+    for _, fn in ipairs(cached) do task.spawn(fn) end
+end
+
+local function getAdminFrames()
+    local panel = adminPanel:FindFirstChild("AdminPanel")
+    local content  = panel and panel:FindFirstChild("Content")
+    local profiles = panel and panel:FindFirstChild("Profiles")
+    if content and profiles then
+        return content:FindFirstChild("ScrollingFrame"), profiles:FindFirstChild("ScrollingFrame")
+    end
+end
+
+local function runCmd(cmd, target)
+    if not target then return end
+    local cFrame, pFrame = getAdminFrames()
+    if not cFrame or not pFrame then return end
+    local pBtn = pFrame:FindFirstChild(target.Name)
+    local cBtn = cFrame:FindFirstChild(cmd)
+    if not pBtn or not cBtn then return end
+    if not profileCache[target.Name] then profileCache[target.Name] = cacheActivated(pBtn) end
+    if not commandCache[cmd]         then commandCache[cmd]         = cacheActivated(cBtn) end
+    fireActivated(profileCache[target.Name])
+    task.wait()
+    fireActivated(commandCache[cmd])
+end
+
+local function runSemi(plr)
+    task.spawn(function()
+        for _, cmd in ipairs(cmds) do
+            if SelectedCommands.Semi[cmd] then runCmd(cmd, plr) end
+        end
+    end)
+end
+
+local function runFull(plr)
+    task.spawn(function()
+        for _, cmd in ipairs(cmds) do
+            if SelectedCommands.Full[cmd] then runCmd(cmd, plr) end
+        end
+    end)
+end
+
+--// SNOW
+local function applySnow(parent)
+    task.spawn(function()
+        while parent and parent.Parent do
+            task.wait(0.12)
+            local f = Instance.new("TextLabel")
+            f.Size = UDim2.fromOffset(math.random(8,14), math.random(8,14))
+            f.Position = UDim2.new(math.random(), 0, -0.05, 0)
+            f.BackgroundTransparency = 1
+            f.Text = "*"
+            f.Font = Enum.Font.FredokaOne
+            f.TextScaled = true
+            f.TextColor3 = Color3.new(1,1,1)
+            f.TextTransparency = 0.3
+            f.ZIndex = parent.ZIndex + 1
+            f.Parent = parent
+            local dx = f.Position.X.Scale + (math.random(-15,15)/100)
+            local t = TweenService:Create(f, TweenInfo.new(math.random(25,40)/10, Enum.EasingStyle.Linear),
+                {Position=UDim2.new(dx,0,1.1,0), TextTransparency=0.8})
+            t:Play()
+            t.Completed:Connect(function() f:Destroy() end)
+        end
+    end)
+end
+
+--// GUI
+local Gui = Instance.new("ScreenGui", playerGui)
+Gui.Name = "DatShawnsAPSpam"
+Gui.ResetOnSpawn = false
+Gui.DisplayOrder = 999
+
+-- MAIN PANEL
+local Main = Instance.new("Frame", Gui)
+Main.Size = UDim2.fromScale(0.18, 0.36)
+Main.Position = UDim2.fromScale(0.41, 0.32)
+Main.BackgroundColor3 = Color3.fromRGB(20,20,20)
+Main.Active = true
+Main.Draggable = true
+Main.ClipsDescendants = true
+Main.ZIndex = 10
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0,24)
+local mg = Instance.new("UIGradient", Main)
+mg.Color = ColorSequence.new{ColorSequenceKeypoint.new(0,Color3.fromRGB(25,25,25)),ColorSequenceKeypoint.new(1,Color3.fromRGB(45,45,45))}
+applySnow(Main)
+
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1,0,0,32)
+Title.BackgroundTransparency = 1
+Title.Text = "DatShawn's AP Spam"
+Title.Font = Enum.Font.FredokaOne
+Title.TextScaled = true
+Title.TextColor3 = Color3.fromRGB(240,240,240)
+Title.ZIndex = 15
+
+local Scroll = Instance.new("ScrollingFrame", Main)
+Scroll.Position = UDim2.new(0,8,0,36)
+Scroll.Size = UDim2.new(1,-16,1,-42)
+Scroll.BackgroundTransparency = 1
+Scroll.ScrollBarImageTransparency = 0.8
+Scroll.ZIndex = 10
+local Layout = Instance.new("UIListLayout", Scroll)
+Layout.Padding = UDim.new(0,6)
+Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    Scroll.CanvasSize = UDim2.new(0,0,0,Layout.AbsoluteContentSize.Y+6)
+end)
+
+-- DATSHAWN BUBBLE
+local Bubble = Instance.new("TextButton", Gui)
+Bubble.Size = UDim2.fromOffset(84,30)
+Bubble.Position = UDim2.new(0.04,0,0.40,0)
+Bubble.BackgroundColor3 = Color3.fromRGB(30,30,30)
+Bubble.BackgroundTransparency = 0
+Bubble.AutoButtonColor = false
+Bubble.Font = Enum.Font.FredokaOne
+Bubble.Text = "DatShawn"
+Bubble.TextColor3 = Color3.fromRGB(255,255,255)
+Bubble.TextTransparency = 0
+Bubble.TextScaled = true
+Bubble.Draggable = true
+Bubble.Active = true
+Bubble.ZIndex = 100
+Instance.new("UICorner", Bubble).CornerRadius = UDim.new(0,12)
+local BStroke = Instance.new("UIStroke", Bubble)
+BStroke.Color = Color3.fromRGB(255,255,255)
+BStroke.Thickness = 1.5
+BStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local bubbleDragged, bubbleDragStart = false, nil
+Bubble.MouseButton1Down:Connect(function()
+    bubbleDragged = false
+    bubbleDragStart = Bubble.AbsolutePosition
+end)
+Bubble:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
+    if bubbleDragStart and (Bubble.AbsolutePosition - bubbleDragStart).Magnitude > 6 then
+        bubbleDragged = true
+    end
+end)
+
+-- CONFIG FRAME
+local ConfigFrame = Instance.new("Frame", Gui)
+ConfigFrame.Size = UDim2.fromOffset(230,260)
+ConfigFrame.Position = UDim2.fromScale(0.08,0.12)
+ConfigFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+ConfigFrame.BackgroundTransparency = 0.05
+ConfigFrame.Visible = false
+ConfigFrame.Draggable = true
+ConfigFrame.Active = true
+ConfigFrame.ZIndex = 10
+Instance.new("UICorner", ConfigFrame).CornerRadius = UDim.new(0,18)
+local cs = Instance.new("UIStroke", ConfigFrame)
+cs.Color = Color3.fromRGB(163,163,163); cs.Thickness = 1
+local cg = Instance.new("UIGradient", ConfigFrame)
+cg.Color = ColorSequence.new{ColorSequenceKeypoint.new(0,Color3.fromRGB(25,25,25)),ColorSequenceKeypoint.new(1,Color3.fromRGB(45,45,45))}
+applySnow(ConfigFrame)
+
+local CTitle = Instance.new("TextLabel", ConfigFrame)
+CTitle.Size = UDim2.new(1,0,0,24); CTitle.Position = UDim2.new(0,0,0,4)
+CTitle.Text = "Semi  |  CFG  |  Full"
+CTitle.Font = Enum.Font.FredokaOne; CTitle.TextScaled = true
+CTitle.TextColor3 = Color3.fromRGB(220,220,220); CTitle.BackgroundTransparency = 1; CTitle.ZIndex = 20
+
+local SemiCol = Instance.new("Frame", ConfigFrame)
+SemiCol.Size = UDim2.new(0.48,-4,1,-34); SemiCol.Position = UDim2.new(0,4,0,30)
+SemiCol.BackgroundTransparency = 1; SemiCol.ZIndex = 20
+local SL = Instance.new("UIListLayout", SemiCol)
+SL.Padding = UDim.new(0,3); SL.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local FullCol = Instance.new("Frame", ConfigFrame)
+FullCol.Size = UDim2.new(0.48,-4,1,-34); FullCol.Position = UDim2.new(0.52,0,0,30)
+FullCol.BackgroundTransparency = 1; FullCol.ZIndex = 20
+local FL = Instance.new("UIListLayout", FullCol)
+FL.Padding = UDim.new(0,3); FL.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local function cap(s) return s:sub(1,1):upper()..s:sub(2):lower() end
+
+local function createToggle(name, parent, tbl, key)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(1,0,0,26); btn.Text = cap(name)
+    btn.Font = Enum.Font.FredokaOne; btn.TextSize = 13
+    btn.TextColor3 = Color3.fromRGB(255,255,255); btn.ZIndex = 25
+    btn.BackgroundColor3 = tbl[key] and Color3.fromRGB(50,90,50) or Color3.fromRGB(55,55,55)
+    btn.BackgroundTransparency = 0.1
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,7)
+    local s = Instance.new("UIStroke", btn); s.Color = Color3.fromRGB(160,160,160); s.Thickness = 0.7
+    btn.MouseButton1Click:Connect(function()
+        tbl[key] = not tbl[key]
+        btn.BackgroundColor3 = tbl[key] and Color3.fromRGB(50,90,50) or Color3.fromRGB(55,55,55)
+        saveSettings()
+    end)
+end
+
+for _, c in ipairs(cmds) do
+    createToggle(c, SemiCol, SelectedCommands.Semi, c)
+    createToggle(c, FullCol, SelectedCommands.Full, c)
+end
+
+Bubble.MouseButton1Click:Connect(function()
+    if bubbleDragged then return end
+    ConfigFrame.Visible = not ConfigFrame.Visible
+end)
+
+--// PLAYER ROWS
+local function addPlayer(plr)
+    if plr == LocalPlayer then return end
+    if Scroll:FindFirstChild(plr.Name) then return end
+
+    local Row = Instance.new("Frame", Scroll)
+    Row.Name = plr.Name; Row.Size = UDim2.new(1,0,0,50)
+    Row.BackgroundColor3 = Color3.fromRGB(35,35,35); Row.ZIndex = 11
+    Instance.new("UICorner", Row).CornerRadius = UDim.new(0,16)
+
+    local Avatar = Instance.new("ImageLabel", Row)
+    Avatar.Size = UDim2.new(0,32,0,32); Avatar.Position = UDim2.new(0,8,0.5,-16)
+    Avatar.BackgroundTransparency = 1; Avatar.ZIndex = 12
+    pcall(function() Avatar.Image = Players:GetUserThumbnailAsync(plr.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size48x48) end)
+    Instance.new("UICorner", Avatar).CornerRadius = UDim.new(1,0)
+
+    local NH = Instance.new("Frame", Row)
+    NH.Size = UDim2.new(0.34,0,1,0); NH.Position = UDim2.new(0,48,0,0)
+    NH.BackgroundTransparency = 1; NH.ZIndex = 12
+
+    local DN = Instance.new("TextLabel", NH)
+    DN.Size = UDim2.new(1,0,0.5,0); DN.BackgroundTransparency = 1
+    DN.Text = plr.DisplayName; DN.Font = Enum.Font.FredokaOne; DN.TextScaled = true
+    DN.TextXAlignment = Enum.TextXAlignment.Left; DN.TextColor3 = Color3.fromRGB(240,240,240)
+    DN.TextTruncate = Enum.TextTruncate.AtEnd; DN.ZIndex = 13
+
+    local UN = Instance.new("TextLabel", NH)
+    UN.Size = UDim2.new(1,0,0.5,0); UN.Position = UDim2.new(0,0,0.5,0)
+    UN.BackgroundTransparency = 1; UN.Text = "(@"..plr.Name..")"
+    UN.Font = Enum.Font.Gotham; UN.TextScaled = true
+    UN.TextXAlignment = Enum.TextXAlignment.Left; UN.TextColor3 = Color3.fromRGB(180,180,180)
+    UN.TextTruncate = Enum.TextTruncate.AtEnd; UN.ZIndex = 13
+
+    local function makeBtn(txt, pos)
+        local B = Instance.new("TextButton", Row)
+        B.Size = UDim2.new(0.24,0,0.65,0); B.Position = pos
+        B.Font = Enum.Font.FredokaOne; B.TextScaled = true
+        B.TextColor3 = Color3.fromRGB(255,255,255)
+        B.BackgroundColor3 = Color3.fromRGB(60,60,60)
+        B.ZIndex = 14; B.Text = txt
+        Instance.new("UICorner", B); return B
+    end
+
+    local SemiBtn = makeBtn("SEMI", UDim2.new(0.50,0,0.18,0))
+    local FullBtn = makeBtn("FULL", UDim2.new(0.76,0,0.18,0))
+
+    SemiBtn.MouseButton1Click:Connect(function() runSemi(plr) end)
+    FullBtn.MouseButton1Click:Connect(function() runFull(plr) end)
+end
+
+Players.PlayerAdded:Connect(addPlayer)
+Players.PlayerRemoving:Connect(function(plr)
+    if Scroll:FindFirstChild(plr.Name) then Scroll[plr.Name]:Destroy() end
+end)
+for _, p in ipairs(Players:GetPlayers()) do addPlayer(p) end
